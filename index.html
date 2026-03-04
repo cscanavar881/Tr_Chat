@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tr_Chat | Canlı Sohbet</title>
-    <!-- Güzel grafikler için Tailwind -->
+    <title>Tr_Chat | V2</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Canlı mesajlaşma için Firebase -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -18,43 +18,61 @@
 </head>
 <body class="bg-[#36393f] text-gray-100 h-screen flex overflow-hidden font-sans">
 
-    <!-- Sol Menü -->
-    <div class="w-16 bg-[#202225] flex flex-col items-center py-4 gap-4">
+    <!-- En Sol Menü -->
+    <div class="w-16 bg-[#202225] flex flex-col items-center py-4 gap-4 flex-shrink-0">
         <div class="w-12 h-12 bg-red-600 text-white rounded-[24px] hover:rounded-[16px] transition-all duration-300 cursor-pointer flex items-center justify-center font-bold shadow-lg">TR</div>
     </div>
-    <div class="w-60 bg-[#2f3136] flex flex-col hidden md:flex">
-        <div class="h-12 border-b border-[#202225] flex items-center px-4 font-bold text-lg">Tr_Chat</div>
+
+    <!-- Kanallar Menüsü -->
+    <div class="w-60 bg-[#2f3136] flex flex-col hidden md:flex flex-shrink-0">
+        <div class="h-12 border-b border-[#202225] flex items-center px-4 font-bold text-lg shadow-sm">Tr_Chat Odaları</div>
         <div class="p-4 flex-1">
-            <div class="text-gray-100 bg-[#393c43] p-2 rounded cursor-pointer mb-1"><span class="text-gray-500 mr-1">#</span> genel-sohbet</div>
+            <div class="text-gray-100 bg-[#393c43] p-2 rounded cursor-pointer mb-1 flex items-center"><span class="text-gray-500 mr-2 text-xl">#</span> genel-sohbet</div>
         </div>
         <div class="bg-[#292b2f] p-3 flex items-center gap-3">
-            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center font-bold text-white" id="user-avatar">?</div>
+            <div class="relative">
+                <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center font-bold text-white" id="user-avatar">?</div>
+                <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#292b2f] rounded-full"></div>
+            </div>
             <div>
                 <div class="text-sm font-bold text-white leading-tight" id="user-name-display">Sen</div>
-                <div class="text-xs text-green-400 leading-tight">Çevrimiçi</div>
+                <div class="text-xs text-gray-400 leading-tight">Çevrimiçi</div>
             </div>
         </div>
     </div>
 
-    <!-- Sohbet Ekranı -->
-    <div class="flex-1 flex flex-col bg-[#36393f]">
+    <!-- Ana Sohbet Ekranı -->
+    <div class="flex-1 flex flex-col bg-[#36393f] min-w-0">
         <div class="h-12 border-b border-[#202225] flex items-center px-4 shadow-sm">
             <span class="text-gray-400 text-xl mr-2 font-light">#</span>
-            <span class="font-bold">genel-sohbet (CANLI)</span>
+            <span class="font-bold">genel-sohbet</span>
         </div>
 
         <div class="flex-1 p-4 overflow-y-auto flex flex-col" id="chat-box"></div>
 
-        <div class="p-4 pt-0 mt-2">
+        <!-- Yazıyor Bildirimi -->
+        <div id="typing-indicator" class="px-4 text-xs font-bold text-indigo-400 h-4 mb-1 animate-pulse"></div>
+
+        <div class="p-4 pt-0">
             <div class="bg-[#40444b] rounded-lg flex items-center p-3">
-                <input type="text" id="msgInput" placeholder="Mesajını yaz ve Enter'a bas..." class="bg-transparent flex-1 outline-none text-gray-100 placeholder-gray-500" onkeypress="checkEnter(event)">
-                <button onclick="sendMessage()" class="ml-3 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-1 rounded font-bold transition">Gönder</button>
+                <input type="text" id="msgInput" placeholder="Mesajını yaz..." class="bg-transparent flex-1 outline-none text-gray-100 placeholder-gray-500">
+                <button onclick="sendMessage()" class="ml-3 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-1.5 rounded font-bold transition">Gönder</button>
             </div>
         </div>
     </div>
 
+    <!-- YENİ: Çevrimiçi Kullanıcılar Paneli (Sağ Taraf) -->
+    <div class="w-60 bg-[#2f3136] border-l border-[#202225] hidden lg:flex flex-col flex-shrink-0">
+        <div class="h-12 flex items-center px-4 font-bold text-xs text-gray-400 uppercase tracking-wider">
+            Çevrimiçi — <span id="online-count" class="ml-1">0</span>
+        </div>
+        <div class="p-4 flex-1 overflow-y-auto" id="online-users-list">
+            <!-- Online olanlar buraya gelecek -->
+        </div>
+    </div>
+
     <script>
-        // SENİN FOTOĞRAFTAKİ BİLGİLERİNİ BURAYA EKLEDİM!
+        // Senin Firebase Bilgilerin (Değiştirmedim, direkt çalışır)
         var firebaseConfig = {
             apiKey: "AIzaSyBpCLRiS8pHlTgvVmNLH92u3VszvT25xPs",
             authDomain: "trchat-7bc26.firebaseapp.com",
@@ -72,9 +90,92 @@
         document.getElementById("user-name-display").innerText = myName;
         document.getElementById("user-avatar").innerText = myName.charAt(0).toUpperCase();
 
+        // --- YENİ ÖZELLİK 1: KİMLER ÇEVRİMİÇİ SİSTEMİ ---
+        var onlineRef = db.ref('onlineKullanicilar');
+        var connectedRef = db.ref('.info/connected');
+
+        // Kullanıcı siteye girdiğinde
+        connectedRef.on('value', function(snap) {
+            if (snap.val() === true) {
+                var myOnlineRef = onlineRef.child(myName);
+                // Siteden çıkınca adını online listesinden sil
+                myOnlineRef.onDisconnect().remove();
+                // Siteye girince adını listeye ekle
+                myOnlineRef.set(true);
+            }
+        });
+
+        // Sağ panelde online olanları anlık göster
+        onlineRef.on('value', function(snapshot) {
+            var onlineList = document.getElementById('online-users-list');
+            var onlineCount = document.getElementById('online-count');
+            onlineList.innerHTML = '';
+            var count = 0;
+            
+            snapshot.forEach(function(child) {
+                count++;
+                var userName = child.key;
+                var shortName = userName.charAt(0).toUpperCase();
+                onlineList.innerHTML += `
+                    <div class="flex items-center gap-3 mb-3 cursor-pointer hover:bg-[#393c43] p-1 rounded transition-colors">
+                        <div class="relative">
+                            <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center font-bold text-white text-sm">${shortName}</div>
+                            <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#2f3136] rounded-full"></div>
+                        </div>
+                        <span class="text-gray-300 text-sm font-medium">${userName}</span>
+                    </div>
+                `;
+            });
+            onlineCount.innerText = count;
+        });
+
+
+        // --- YENİ ÖZELLİK 2: "YAZIYOR..." SİSTEMİ ---
+        var typingRef = db.ref('yaziyor');
+        var msgInput = document.getElementById("msgInput");
+        var typingTimer;
+
+        // Klavyeye basıldığında
+        msgInput.addEventListener('input', function() {
+            if(msgInput.value.trim() !== "") {
+                typingRef.child(myName).set(true); // Yazdığını veritabanına bildir
+                clearTimeout(typingTimer);
+                // 2 saniye klavyeye basmazsa yazıyor yazısını kaldır
+                typingTimer = setTimeout(function() {
+                    typingRef.child(myName).remove();
+                }, 2000);
+            } else {
+                typingRef.child(myName).remove();
+            }
+        });
+
+        // Enter'a basınca gönder
+        msgInput.addEventListener("keypress", function(e) {
+            if(e.key === "Enter") sendMessage();
+        });
+
+        // Başkalarının yazıp yazmadığını dinle
+        typingRef.on('value', function(snapshot) {
+            var typingIndicator = document.getElementById('typing-indicator');
+            var typingUsers =[];
+            
+            snapshot.forEach(function(child) {
+                if(child.key !== myName) { // Kendi adımızı göstermeyelim
+                    typingUsers.push(child.key);
+                }
+            });
+
+            if(typingUsers.length > 0) {
+                var text = typingUsers.join(', ') + (typingUsers.length > 1 ? ' yazıyorlar... ✍️' : ' yazıyor... ✍️');
+                typingIndicator.innerText = text;
+            } else {
+                typingIndicator.innerText = '';
+            }
+        });
+
+        // --- MESAJ GÖNDERME VE ALMA (Aynı Kaldı) ---
         function sendMessage() {
-            var input = document.getElementById("msgInput");
-            var text = input.value;
+            var text = msgInput.value;
             if(text.trim() === "") return;
 
             db.ref("mesajlar").push({
@@ -82,11 +183,8 @@
                 mesaj: text,
                 saat: new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})
             });
-            input.value = ""; 
-        }
-
-        function checkEnter(e) {
-            if(e.key === "Enter") sendMessage();
+            msgInput.value = ""; 
+            typingRef.child(myName).remove(); // Gönderince yazıyor yazısını sil
         }
 
         db.ref("mesajlar").on("child_added", function(snapshot) {
