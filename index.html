@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tr_Chat | V2</title>
-    <!-- Tailwind CSS -->
+    <title>Tr_Chat | V3 - Ücretsiz Resim Gönderme</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase -->
+    
+    <!-- Sadece Firebase Veritabanı (Bedava Olan Kısım) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -50,29 +50,33 @@
 
         <div class="flex-1 p-4 overflow-y-auto flex flex-col" id="chat-box"></div>
 
-        <!-- Yazıyor Bildirimi -->
         <div id="typing-indicator" class="px-4 text-xs font-bold text-indigo-400 h-4 mb-1 animate-pulse"></div>
 
+        <!-- Mesaj Gönderme Kutusu -->
         <div class="p-4 pt-0">
             <div class="bg-[#40444b] rounded-lg flex items-center p-3">
+                <!-- Fotoğraf Yükleme Butonu -->
+                <button onclick="document.getElementById('fileInput').click()" class="w-8 h-8 flex items-center justify-center bg-gray-600 hover:bg-gray-500 text-white rounded-full transition-colors mr-3" title="Fotoğraf Gönder">
+                    <span class="text-xl leading-none mb-1">+</span>
+                </button>
+                <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="uploadImage(event)">
+                
                 <input type="text" id="msgInput" placeholder="Mesajını yaz..." class="bg-transparent flex-1 outline-none text-gray-100 placeholder-gray-500">
                 <button onclick="sendMessage()" class="ml-3 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-1.5 rounded font-bold transition">Gönder</button>
             </div>
         </div>
     </div>
 
-    <!-- YENİ: Çevrimiçi Kullanıcılar Paneli (Sağ Taraf) -->
+    <!-- Çevrimiçi Paneli -->
     <div class="w-60 bg-[#2f3136] border-l border-[#202225] hidden lg:flex flex-col flex-shrink-0">
         <div class="h-12 flex items-center px-4 font-bold text-xs text-gray-400 uppercase tracking-wider">
             Çevrimiçi — <span id="online-count" class="ml-1">0</span>
         </div>
-        <div class="p-4 flex-1 overflow-y-auto" id="online-users-list">
-            <!-- Online olanlar buraya gelecek -->
-        </div>
+        <div class="p-4 flex-1 overflow-y-auto" id="online-users-list"></div>
     </div>
 
     <script>
-        // Senin Firebase Bilgilerin (Değiştirmedim, direkt çalışır)
+        // Senin Firebase Bilgilerin
         var firebaseConfig = {
             apiKey: "AIzaSyBpCLRiS8pHlTgvVmNLH92u3VszvT25xPs",
             authDomain: "trchat-7bc26.firebaseapp.com",
@@ -82,7 +86,6 @@
             messagingSenderId: "929228323637",
             appId: "1:929228323637:web:93208153882d14a04f6a7c"
         };
-        
         firebase.initializeApp(firebaseConfig);
         var db = firebase.database();
 
@@ -90,90 +93,105 @@
         document.getElementById("user-name-display").innerText = myName;
         document.getElementById("user-avatar").innerText = myName.charAt(0).toUpperCase();
 
-        // --- YENİ ÖZELLİK 1: KİMLER ÇEVRİMİÇİ SİSTEMİ ---
+        // Çevrimiçi Sistemi
         var onlineRef = db.ref('onlineKullanicilar');
         var connectedRef = db.ref('.info/connected');
-
-        // Kullanıcı siteye girdiğinde
         connectedRef.on('value', function(snap) {
             if (snap.val() === true) {
                 var myOnlineRef = onlineRef.child(myName);
-                // Siteden çıkınca adını online listesinden sil
                 myOnlineRef.onDisconnect().remove();
-                // Siteye girince adını listeye ekle
                 myOnlineRef.set(true);
             }
         });
-
-        // Sağ panelde online olanları anlık göster
         onlineRef.on('value', function(snapshot) {
             var onlineList = document.getElementById('online-users-list');
             var onlineCount = document.getElementById('online-count');
             onlineList.innerHTML = '';
             var count = 0;
-            
             snapshot.forEach(function(child) {
                 count++;
                 var userName = child.key;
-                var shortName = userName.charAt(0).toUpperCase();
                 onlineList.innerHTML += `
                     <div class="flex items-center gap-3 mb-3 cursor-pointer hover:bg-[#393c43] p-1 rounded transition-colors">
                         <div class="relative">
-                            <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center font-bold text-white text-sm">${shortName}</div>
+                            <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center font-bold text-white text-sm">${userName.charAt(0).toUpperCase()}</div>
                             <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#2f3136] rounded-full"></div>
                         </div>
                         <span class="text-gray-300 text-sm font-medium">${userName}</span>
-                    </div>
-                `;
+                    </div>`;
             });
             onlineCount.innerText = count;
         });
 
-
-        // --- YENİ ÖZELLİK 2: "YAZIYOR..." SİSTEMİ ---
+        // Yazıyor... Sistemi
         var typingRef = db.ref('yaziyor');
         var msgInput = document.getElementById("msgInput");
         var typingTimer;
-
-        // Klavyeye basıldığında
         msgInput.addEventListener('input', function() {
             if(msgInput.value.trim() !== "") {
-                typingRef.child(myName).set(true); // Yazdığını veritabanına bildir
+                typingRef.child(myName).set(true);
                 clearTimeout(typingTimer);
-                // 2 saniye klavyeye basmazsa yazıyor yazısını kaldır
-                typingTimer = setTimeout(function() {
-                    typingRef.child(myName).remove();
-                }, 2000);
+                typingTimer = setTimeout(function() { typingRef.child(myName).remove(); }, 2000);
             } else {
                 typingRef.child(myName).remove();
             }
         });
-
-        // Enter'a basınca gönder
-        msgInput.addEventListener("keypress", function(e) {
-            if(e.key === "Enter") sendMessage();
-        });
-
-        // Başkalarının yazıp yazmadığını dinle
+        msgInput.addEventListener("keypress", function(e) { if(e.key === "Enter") sendMessage(); });
         typingRef.on('value', function(snapshot) {
             var typingIndicator = document.getElementById('typing-indicator');
             var typingUsers =[];
-            
-            snapshot.forEach(function(child) {
-                if(child.key !== myName) { // Kendi adımızı göstermeyelim
-                    typingUsers.push(child.key);
-                }
-            });
-
-            if(typingUsers.length > 0) {
-                var text = typingUsers.join(', ') + (typingUsers.length > 1 ? ' yazıyorlar... ✍️' : ' yazıyor... ✍️');
-                typingIndicator.innerText = text;
-            } else {
-                typingIndicator.innerText = '';
-            }
+            snapshot.forEach(function(child) { if(child.key !== myName) typingUsers.push(child.key); });
+            typingIndicator.innerText = typingUsers.length > 0 ? typingUsers.join(', ') + (typingUsers.length > 1 ? ' yazıyorlar... ✍️' : ' yazıyor... ✍️') : '';
         });
 
-        // --- MESAJ GÖNDERME VE ALMA (Aynı Kaldı) ---
+        // --- YENİ: ÜCRETSİZ FOTOĞRAF YÜKLEME SİSTEMİ ---
+        function uploadImage(e) {
+            var file = e.target.files[0];
+            if(!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                alert("Lütfen sadece fotoğraf (resim) seçin!");
+                return;
+            }
+
+            // DİKKAT: IMGBB'DEN ALDIĞIN KODU AŞAĞIDAKİ TIRNAKLARIN İÇİNE YAPIŞTIR!
+            var IMGBB_API_KEY = "de4827bd8b03b0a3bab867e72b366172"; 
+
+            if (IMGBB_API_KEY === "de4827bd8b03b0a3bab867e72b366172") {
+                alert("Hata: Lütfen ImgBB API kodunu kodların içine yapıştır!");
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append("image", file);
+
+            msgInput.placeholder = "Fotoğraf Yükleniyor... Lütfen bekle.";
+            msgInput.disabled = true;
+
+            fetch("https://api.imgbb.com/1/upload?key=" + IMGBB_API_KEY, {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                var downloadURL = result.data.url; // Resmin yeni bedava linki
+                msgInput.placeholder = "Mesajını yaz...";
+                msgInput.disabled = false;
+
+                db.ref("mesajlar").push({
+                    isim: myName,
+                    mesaj: "",
+                    dosyaUrl: downloadURL,
+                    saat: new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})
+                });
+            })
+            .catch(error => {
+                alert("Resim yüklenirken hata oluştu! Boyutu büyük olabilir.");
+                msgInput.placeholder = "Mesajını yaz...";
+                msgInput.disabled = false;
+            });
+        }
+
         function sendMessage() {
             var text = msgInput.value;
             if(text.trim() === "") return;
@@ -181,10 +199,11 @@
             db.ref("mesajlar").push({
                 isim: myName,
                 mesaj: text,
+                dosyaUrl: null,
                 saat: new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})
             });
             msgInput.value = ""; 
-            typingRef.child(myName).remove(); // Gönderince yazıyor yazısını sil
+            typingRef.child(myName).remove();
         }
 
         db.ref("mesajlar").on("child_added", function(snapshot) {
@@ -193,12 +212,19 @@
             var colors =["text-red-400", "text-blue-400", "text-green-400", "text-yellow-400", "text-purple-400", "text-pink-400"];
             var randomColor = colors[data.isim.length % colors.length];
 
+            var contentHtml = `<p class="text-gray-100 mt-1">${data.mesaj}</p>`;
+            
+            // Sadece resim gelirse göster (Yeni Sistem)
+            if (data.dosyaUrl) {
+                contentHtml += `<img src="${data.dosyaUrl}" class="mt-2 rounded-lg max-w-sm max-h-64 object-cover cursor-pointer hover:opacity-90 border border-[#202225] shadow-lg" onclick="window.open(this.src, '_blank')">`;
+            }
+
             var msgDiv = document.createElement("div");
             msgDiv.className = "mb-2 hover:bg-[#32353b] p-2 rounded transition-colors";
             msgDiv.innerHTML = `
                 <span class="font-bold ${randomColor} cursor-pointer">${data.isim}</span>
                 <span class="text-xs text-gray-400 ml-2">${data.saat}</span>
-                <p class="text-gray-100 mt-1">${data.mesaj}</p>
+                ${contentHtml}
             `;
             chatBox.appendChild(msgDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
