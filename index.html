@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tr_Chat | Canlı Sohbet</title>
+    <!-- Güzel grafikler için Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canlı mesajlaşma için Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2f3136; }
+        ::-webkit-scrollbar-thumb { background: #202225; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-[#36393f] text-gray-100 h-screen flex overflow-hidden font-sans">
+
+    <!-- Sol Menü -->
+    <div class="w-16 bg-[#202225] flex flex-col items-center py-4 gap-4">
+        <div class="w-12 h-12 bg-red-600 text-white rounded-[24px] hover:rounded-[16px] transition-all duration-300 cursor-pointer flex items-center justify-center font-bold shadow-lg">TR</div>
+    </div>
+    <div class="w-60 bg-[#2f3136] flex flex-col hidden md:flex">
+        <div class="h-12 border-b border-[#202225] flex items-center px-4 font-bold text-lg">Tr_Chat</div>
+        <div class="p-4 flex-1">
+            <div class="text-gray-100 bg-[#393c43] p-2 rounded cursor-pointer mb-1"><span class="text-gray-500 mr-1">#</span> genel-sohbet</div>
+        </div>
+        <div class="bg-[#292b2f] p-3 flex items-center gap-3">
+            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center font-bold text-white" id="user-avatar">?</div>
+            <div>
+                <div class="text-sm font-bold text-white leading-tight" id="user-name-display">Sen</div>
+                <div class="text-xs text-green-400 leading-tight">Çevrimiçi</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sohbet Ekranı -->
+    <div class="flex-1 flex flex-col bg-[#36393f]">
+        <div class="h-12 border-b border-[#202225] flex items-center px-4 shadow-sm">
+            <span class="text-gray-400 text-xl mr-2 font-light">#</span>
+            <span class="font-bold">genel-sohbet (CANLI)</span>
+        </div>
+
+        <div class="flex-1 p-4 overflow-y-auto flex flex-col" id="chat-box"></div>
+
+        <div class="p-4 pt-0 mt-2">
+            <div class="bg-[#40444b] rounded-lg flex items-center p-3">
+                <input type="text" id="msgInput" placeholder="Mesajını yaz ve Enter'a bas..." class="bg-transparent flex-1 outline-none text-gray-100 placeholder-gray-500" onkeypress="checkEnter(event)">
+                <button onclick="sendMessage()" class="ml-3 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-1 rounded font-bold transition">Gönder</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SENİN FOTOĞRAFTAKİ BİLGİLERİNİ BURAYA EKLEDİM!
+        var firebaseConfig = {
+            apiKey: "AIzaSyBpCLRiS8pHlTgvVmNLH92u3VszvT25xPs",
+            authDomain: "trchat-7bc26.firebaseapp.com",
+            databaseURL: "https://trchat-7bc26-default-rtdb.firebaseio.com", 
+            projectId: "trchat-7bc26",
+            storageBucket: "trchat-7bc26.firebasestorage.app",
+            messagingSenderId: "929228323637",
+            appId: "1:929228323637:web:93208153882d14a04f6a7c"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        var db = firebase.database();
+
+        var myName = prompt("Tr_Chat'e Hoş Geldin! Adın ne olsun?") || "Misafir_" + Math.floor(Math.random()*1000);
+        document.getElementById("user-name-display").innerText = myName;
+        document.getElementById("user-avatar").innerText = myName.charAt(0).toUpperCase();
+
+        function sendMessage() {
+            var input = document.getElementById("msgInput");
+            var text = input.value;
+            if(text.trim() === "") return;
+
+            db.ref("mesajlar").push({
+                isim: myName,
+                mesaj: text,
+                saat: new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'})
+            });
+            input.value = ""; 
+        }
+
+        function checkEnter(e) {
+            if(e.key === "Enter") sendMessage();
+        }
+
+        db.ref("mesajlar").on("child_added", function(snapshot) {
+            var data = snapshot.val();
+            var chatBox = document.getElementById("chat-box");
+            var colors =["text-red-400", "text-blue-400", "text-green-400", "text-yellow-400", "text-purple-400", "text-pink-400"];
+            var randomColor = colors[data.isim.length % colors.length];
+
+            var msgDiv = document.createElement("div");
+            msgDiv.className = "mb-2 hover:bg-[#32353b] p-2 rounded transition-colors";
+            msgDiv.innerHTML = `
+                <span class="font-bold ${randomColor} cursor-pointer">${data.isim}</span>
+                <span class="text-xs text-gray-400 ml-2">${data.saat}</span>
+                <p class="text-gray-100 mt-1">${data.mesaj}</p>
+            `;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+    </script>
+</body>
+</html>
